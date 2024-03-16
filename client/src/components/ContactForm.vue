@@ -40,9 +40,7 @@ export default {
       tel: '',
       message: ''
     });
-    const errors = ref({});
 
-    // submitForm関数では、`this` を使用せずに `form.value` に直接アクセス
     const submitForm = () => {
       axios.post('/api/contact', form.value)
           .then(() => {
@@ -52,16 +50,28 @@ export default {
               message: 'お問い合わせありがとうございます。',
               type: 'success',
             });
-            form.value = { name: '', furigana: '', email: '', tel: '', message: '' };
+            Object.keys(form.value).forEach(key => {
+              form.value[key] = '';
+            });
           })
           .catch(error => {
-            // 422 Unprocessable Entityの場合、バリデーションエラーの詳細を表示
-            if (error.response && error.response.status === 422) {
-              const messages = Object.values(error.response.data.errors).flat().join('\n');
+            if (error.response && error.response.status === 422 && error.response.data.errors) {
+              const fieldLabels = {
+                name: '名前',
+                furigana: 'ふりがな',
+                email: 'メールアドレス',
+                tel: '電話番号',
+                message: 'お問い合わせ内容'
+              };
+              const messages = Object.entries(error.response.data.errors)
+                  .map(([field, _]) => `${fieldLabels[field] || field}を入力してください。`) // eslint-disable-line no-unused-vars
+                  .join('<br>');
               ElNotification({
-                title: 'エラー',
-                message: messages, // バリデーションエラーの詳細を表示
+                title: '必須項目が未入力です。',
+                message: messages,
+                dangerouslyUseHTMLString: true,
                 type: 'error',
+                customClass: 'custom-notification'
               });
             } else {
               // その他のエラーの場合、一般的なエラーメッセージを表示
@@ -75,12 +85,12 @@ export default {
     };
 
     // setup関数から返す値
-    return { form, errors, submitForm };
+    return { form, submitForm };
   }
 };
 </script>
 
-<style scoped>
+<style>
   .el-form {
     max-width: 600px;
     margin: auto;
@@ -93,5 +103,9 @@ export default {
   .el-input,
   .el-input[type="textarea"] {
     width: 100%;
+  }
+
+  .custom-notification {
+    width: 350px;
   }
 </style>
